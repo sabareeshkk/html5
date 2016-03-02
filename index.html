@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+</head>
+<body>
+  <video controls></video>
+  <script>
+    var video = document.querySelector('video');
+    var assetURL = 'https://dl.dropboxusercontent.com/u/10221224/frag_bunny.mp4';
+      // Need to be specific for Blink regarding codecs
+      // ./mp4info frag_bunny.mp4 | grep Codec
+      var mimeCodec = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+      if ('MediaSource' in window && MediaSource.isTypeSupported(mimeCodec)) {
+        var mediaSource = new MediaSource;
+        console.log('ready state', mediaSource.readyState); // closed
+        console.log('haiiiii.........')
+        video.src = URL.createObjectURL(mediaSource);
+        console.log('mediasource', video.src);
+        mediaSource.addEventListener('sourceopen', sourceOpen);
+      } else {
+        console.error('Unsupported MIME type or codec: ', mimeCodec);
+      }
+
+      function sourceOpen (_) {
+        console.log('source ready state', this.readyState); // open
+        var mediaSource = this;
+        var sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+        fetchAB(assetURL, function (buf) {
+         console.log('buf', buf);
+	          /*sourceBuffer.addEventListener('update', function (err, data) {
+	          	console.log('update', err, data);
+	          });*/
+	          sourceBuffer.addEventListener('updateend', function (_) {
+	          	console.log('active buffers', mediaSource.activeSourceBuffers[0]);
+             mediaSource.endOfStream();
+             video.play();
+           });
+	          sourceBuffer.appendBuffer(buf);
+          });
+      };
+
+      function fetchAB (url, cb) {
+        console.log(url);
+        var xhr = new XMLHttpRequest;
+        xhr.onload = function () {
+          var arrayBuffer = xhr.response;
+          var blob = new Blob([arrayBuffer]);
+          console.log('blob', blob);
+          
+          // async test
+          var reader = new FileReader();
+          reader.onload = function() {
+            var generatedBuffer = reader.result;
+            console.log('array buffer', generatedBuffer);
+            cb(generatedBuffer);
+           };
+          reader.readAsArrayBuffer(blob);
+
+          //var dataView = new DataView(arrayBuffer);
+          //console.log('databuffer', dataView.toString(16), arrayBuffer.isView);
+          /*if (arrayBuffer) {
+          var byteArray = new Uint8Array(arrayBuffer);
+          for (var i = 0; i < byteArray.byteLength; i++) {
+            // do something with each byte in the array
+            console.log('arraybuffer', byteArray);
+          }
+          }*/
+          //cb(xhr.response);
+      };
+      xhr.responseType = 'arraybuffer';
+      xhr.open('get', url);
+        //xhr.setRequestHeader('Range', 'bytes=0-200');
+      xhr.send();
+    };
+
+    </script>
+  </body>
+  </html>
